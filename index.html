@@ -912,7 +912,7 @@ socket.on('rejoined', ({ player, room, judge, submissions }) => {
   }
 });
 
-socket.on('rejoin_failed', () => { localStorage.removeItem('auxSession'); });
+socket.on('rejoin_failed', () => { localStorage.removeItem('auxSession'); goTo('screen-home'); });
 
 socket.on('player_rejoined', ({ room }) => {
   state.room = room;
