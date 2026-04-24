@@ -145,6 +145,7 @@ const PROMPTS = [
 ];
 
 const rooms = {};
+const pendingDisconnects = new Map(); // socketId → timeout handle
 let spotifyToken = null;
 let tokenExpiry = 0;
 
@@ -227,12 +228,41 @@ io.on('connection', socket => {
     const room = rooms[roomCode];
     if (!room) return socket.emit('error', { message: 'Room not found. Check the code.' });
     if (room.state !== 'lobby') return socket.emit('error', { message: 'Game already in progress.' });
+    if (room.players.some(p => p.name === playerName)) {
+      return socket.emit('error', { message: `Name "${playerName}" is already taken in this room.` });
+    }
     const player = { id: socket.id, name: playerName, score: 0, isHost: false };
     room.players.push(player);
     socket.join(roomCode);
     socket.data = { roomCode };
     socket.emit('room_joined', { player, room });
     socket.to(roomCode).emit('player_joined', { player, room });
+  });
+
+  socket.on('rejoin', ({ roomCode, playerName }) => {
+    const room = rooms[roomCode];
+    if (!room) return socket.emit('rejoin_failed', { message: 'Game no longer exists.' });
+    const existing = room.players.find(p => p.name === playerName);
+    if (!existing) return socket.emit('rejoin_failed', { message: 'Session not found.' });
+
+    // Cancel the pending removal if still within grace period
+    const t = pendingDisconnects.get(existing.id);
+    if (t) { clearTimeout(t); pendingDisconnects.delete(existing.id); }
+
+    // Remap socket ID and update any submissions they already made
+    const oldId = existing.id;
+    existing.id = socket.id;
+    existing.disconnected = false;
+    room.submissions.forEach(s => { if (s.playerId === oldId) s.playerId = socket.id; });
+
+    socket.join(roomCode);
+    socket.data = { roomCode };
+
+    const judge = room.players[room.judgeIndex % room.players.length];
+    const anonSubs = room.submissions.map(s => ({ playerId: s.playerId, song: s.song }));
+    socket.emit('rejoined', { player: existing, room, judge, submissions: anonSubs });
+    io.to(roomCode).emit('player_rejoined', { room });
+    console.log('[~] rejoined:', playerName, 'in', roomCode);
   });
 
   socket.on('start_game', () => {
@@ -310,14 +340,23 @@ io.on('connection', socket => {
     const { roomCode } = socket.data || {};
     if (!roomCode || !rooms[roomCode]) return;
     const room = rooms[roomCode];
-    room.players = room.players.filter(p => p.id !== socket.id);
-    console.log('[-]', socket.id);
-    if (room.players.length === 0) {
-      delete rooms[roomCode];
-    } else {
-      if (!room.players.some(p => p.isHost)) room.players[0].isHost = true;
-      io.to(roomCode).emit('player_left', { room });
-    }
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    // Give 15 seconds for a refresh/reconnect before removing the player
+    player.disconnected = true;
+    console.log('[-] grace period for', player.name);
+    const t = setTimeout(() => {
+      pendingDisconnects.delete(socket.id);
+      room.players = room.players.filter(p => p.id !== socket.id);
+      if (room.players.length === 0) {
+        delete rooms[roomCode];
+      } else {
+        if (!room.players.some(p => p.isHost)) room.players[0].isHost = true;
+        io.to(roomCode).emit('player_left', { room });
+      }
+    }, 15000);
+    pendingDisconnects.set(socket.id, t);
   });
 });
 

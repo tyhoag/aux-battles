@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AUX BATTLES — by HUNNAX Games</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     /* ─── RESET & BASE ─────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,8 +25,8 @@
       --card-bg:      #12142A;
       --card-border:  #2A2D52;
       --radius:       14px;
-      --font-head:    'Bebas Neue', sans-serif;
-      --font-body:    'Outfit', sans-serif;
+      --font-head:    'Bungee', sans-serif;
+      --font-body:    'Poppins', sans-serif;
     }
     html, body {
       width: 100%; height: 100%; overflow: hidden;
@@ -599,16 +599,19 @@
     onkeydown="if(event.key==='Enter')hostGame()" />
   <div class="home-error" id="home-error"></div>
 
-  <div class="home-btns">
+  <!-- Default: host / join buttons -->
+  <div class="home-btns" id="home-btns-area">
     <button class="btn btn-gold btn-lg" onclick="hostGame()">🎵 Host a Game</button>
-    <button class="btn btn-outline btn-lg" onclick="toggleJoinPanel()">🔗 Join a Game</button>
+    <button class="btn btn-outline btn-lg" onclick="showJoinMode()">🔗 Join a Game</button>
   </div>
 
-  <div class="join-panel" id="join-panel" style="display:none;">
-    <input class="input-field" id="roomCodeInput" type="text" placeholder="Room code (e.g. AB3X)"
-      maxlength="4" style="text-align:center;font-size:22px;letter-spacing:8px;text-transform:uppercase;"
-      oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')joinGame()" />
-    <button class="btn btn-gold" onclick="joinGame()" style="width:100%;">Join →</button>
+  <!-- Join mode: just the code input -->
+  <div id="home-join-area" style="display:none;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:320px;">
+    <input class="input-field" id="roomCodeInput" type="text" maxlength="4" placeholder="CODE"
+      style="text-align:center;font-size:32px;letter-spacing:14px;text-transform:uppercase;font-family:var(--font-head);width:100%;"
+      oninput="onCodeInput(this)" onkeydown="if(event.key==='Enter')joinGame()" />
+    <button class="btn btn-gold" style="width:100%;" onclick="joinGame()">Join →</button>
+    <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;font-family:var(--font-body);" onclick="showMainMode()">← Back</button>
   </div>
 
   <div class="home-footer">© 2026 HUNNAX Games — Aux Battles</div>
@@ -643,7 +646,7 @@
     </div>
     <button class="btn btn-gold" style="width:100%;display:none;" id="startGameBtn" onclick="startGame()">Start Game →</button>
     <div id="waitingMsg" style="display:none;font-size:14px;color:var(--text-muted);text-align:center;padding:10px;">Waiting for host to start…</div>
-    <button class="btn btn-outline btn-sm" style="width:100%" onclick="location.reload()">← Leave Room</button>
+    <button class="btn btn-outline btn-sm" style="width:100%" onclick="leaveRoom()">← Leave Room</button>
   </div>
 </div>
 
@@ -843,8 +846,8 @@
   <div class="final-leaderboard" id="finalLeaderboard"></div>
 
   <div class="gameover-actions">
-    <button class="btn btn-gold btn-lg" onclick="location.reload()">🎲 Play Again</button>
-    <button class="btn btn-outline" onclick="location.reload()">🏠 Home</button>
+    <button class="btn btn-gold btn-lg" onclick="leaveRoom()">🎲 Play Again</button>
+    <button class="btn btn-outline" onclick="leaveRoom()">🏠 Home</button>
   </div>
 </div>
 
@@ -880,9 +883,46 @@ const state = {
 /* ─── SOCKET ─────────────────────────────── */
 const socket = io();
 
+// On (re)connect, attempt to restore a saved session
+socket.on('connect', () => {
+  const saved = JSON.parse(localStorage.getItem('auxSession') || 'null');
+  if (saved?.roomCode && saved?.playerName) {
+    socket.emit('rejoin', { roomCode: saved.roomCode, playerName: saved.playerName });
+  }
+});
+
+socket.on('rejoined', ({ player, room, judge, submissions }) => {
+  state.me = player;
+  state.room = room;
+  if (judge) { state.currentJudge = judge; state.isJudge = judge.id === socket.id; }
+  switch (room.state) {
+    case 'lobby':
+      renderLobby(); goTo('screen-lobby'); break;
+    case 'submitting':
+      document.getElementById('roundBadgeText').textContent = `Round ${room.round}`;
+      document.getElementById('promptCardText').textContent = `"${room.prompt}"`;
+      document.getElementById('promptNextBtn').textContent = state.isJudge ? "I'm the Judge ⚖️" : "Choose Your Song →";
+      resetFlip(); goTo('screen-prompt'); break;
+    case 'playback':
+      renderPlayback(submissions); goTo('screen-reveal'); break;
+    case 'voting':
+      renderVoting(submissions, judge?.id); goTo('screen-vote'); break;
+    default:
+      renderLobby(); goTo('screen-lobby');
+  }
+});
+
+socket.on('rejoin_failed', () => { localStorage.removeItem('auxSession'); });
+
+socket.on('player_rejoined', ({ room }) => {
+  state.room = room;
+  if (document.getElementById('screen-lobby').classList.contains('active')) renderLobby();
+});
+
 socket.on('room_created', ({ code, player, room }) => {
   state.me = player;
   state.room = room;
+  localStorage.setItem('auxSession', JSON.stringify({ roomCode: code, playerName: player.name }));
   renderLobby();
   goTo('screen-lobby');
 });
@@ -890,6 +930,7 @@ socket.on('room_created', ({ code, player, room }) => {
 socket.on('room_joined', ({ player, room }) => {
   state.me = player;
   state.room = room;
+  localStorage.setItem('auxSession', JSON.stringify({ roomCode: room.code, playerName: player.name }));
   renderLobby();
   goTo('screen-lobby');
 });
@@ -953,11 +994,25 @@ function hostGame() {
   socket.emit('create_room', { playerName: name });
 }
 
-function toggleJoinPanel() {
-  const panel = document.getElementById('join-panel');
-  const open = panel.style.display === 'none' || !panel.style.display;
-  panel.style.display = open ? 'flex' : 'none';
-  if (open) document.getElementById('roomCodeInput').focus();
+function showJoinMode() {
+  document.getElementById('home-btns-area').style.display = 'none';
+  document.getElementById('home-join-area').style.display = 'flex';
+  document.getElementById('roomCodeInput').value = '';
+  document.getElementById('roomCodeInput').focus();
+}
+
+function showMainMode() {
+  document.getElementById('home-join-area').style.display = 'none';
+  document.getElementById('home-btns-area').style.display = 'flex';
+}
+
+function onCodeInput(el) {
+  el.value = el.value.toUpperCase();
+  if (el.value.length === 4) {
+    const name = (document.getElementById('playerName').value || '').trim();
+    if (name) joinGame();
+    else { showHomeError('Enter your name first!'); document.getElementById('playerName').focus(); }
+  }
 }
 
 function joinGame() {
@@ -1283,6 +1338,11 @@ function renderGameOver(players, champion) {
 function goTo(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+}
+
+function leaveRoom() {
+  localStorage.removeItem('auxSession');
+  location.reload();
 }
 
 let flipped = false;
