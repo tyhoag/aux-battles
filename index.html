@@ -565,6 +565,35 @@
     .lb-pts { font-family: var(--font-head); font-size: 28px; color: var(--gold); }
     .lb-pts-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
     .gameover-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .song-history-toggle {
+      margin-top: 20px; background: none; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px; color: var(--text-muted); font-family: var(--font-body);
+      font-size: 14px; padding: 10px 20px; cursor: pointer; transition: color 0.2s, border-color 0.2s;
+    }
+    .song-history-toggle:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.35); }
+    .song-history-round {
+      margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.03);
+    }
+    .song-history-prompt {
+      padding: 10px 14px; font-size: 12px; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .song-history-entry {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .song-history-entry:last-child { border-bottom: none; }
+    .song-history-entry img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+    .song-history-entry .sh-info { flex: 1; min-width: 0; }
+    .song-history-entry .sh-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song-history-entry .sh-meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sh-winner-badge { font-size: 11px; color: var(--gold); margin-left: 4px; }
+    .sh-spotify-btn {
+      flex-shrink: 0; background: #1DB954; color: #000; border: none; border-radius: 20px;
+      font-size: 11px; font-weight: 700; padding: 5px 10px; cursor: pointer; font-family: var(--font-body);
+      text-decoration: none; display: inline-block;
+    }
 
     @media (max-width: 480px) {
       .song-cards-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -849,6 +878,11 @@
     <button class="btn btn-gold btn-lg" onclick="leaveRoom()">🎲 Play Again</button>
     <button class="btn btn-outline" onclick="leaveRoom()">🏠 Home</button>
   </div>
+
+  <button class="song-history-toggle" id="songHistoryToggle" onclick="toggleSongHistory()">
+    🎵 See all songs from this game
+  </button>
+  <div id="songHistoryPanel" style="display:none;width:100%;max-width:480px;margin-top:4px;"></div>
 </div>
 
 
@@ -878,6 +912,9 @@ const state = {
   searchResults: [],
   searchTimeout: null,
   pendingVoteId: null,
+  songHistory: [],     // accumulates { round, prompt, winnerId, entries: [{playerName, song}] }
+  currentPrompt: '',
+  currentRound: 0,
 };
 
 /* ─── SOCKET ─────────────────────────────── */
@@ -947,6 +984,8 @@ socket.on('player_left', ({ room }) => {
 });
 
 socket.on('round_started', ({ prompt, judge, players, round }) => {
+  state.currentPrompt = prompt;
+  state.currentRound = round;
   state.room.players = players;
   state.room.prompt = prompt;
   state.currentJudge = judge;
@@ -979,6 +1018,12 @@ socket.on('voting_started', ({ submissions, judgeId }) => {
 });
 
 socket.on('round_results', (data) => {
+  state.songHistory.push({
+    round: state.currentRound,
+    prompt: state.currentPrompt,
+    winnerName: data.winnerName,
+    entries: data.submissions.map(s => ({ playerName: s.playerName, song: s.song })),
+  });
   renderResults(data);
   goTo('screen-winner');
 });
@@ -1332,6 +1377,42 @@ function renderGameOver(players, champion) {
       </div>`;
   }).join('');
   spawnConfetti('confetti2');
+  renderSongHistory();
+}
+
+function renderSongHistory() {
+  const panel = document.getElementById('songHistoryPanel');
+  if (!panel) return;
+  panel.innerHTML = state.songHistory.map(round => {
+    const entries = round.entries.map(e => {
+      const won = e.playerName === round.winnerName;
+      const img = e.song.image
+        ? `<img src="${esc(e.song.image)}" alt="" />`
+        : `<div style="width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,0.08);flex-shrink:0;"></div>`;
+      return `
+        <div class="song-history-entry" style="${won ? 'background:rgba(245,166,35,0.06);' : ''}">
+          ${img}
+          <div class="sh-info">
+            <div class="sh-title">${esc(e.song.title)}${won ? ' <span class="sh-winner-badge">🏅 won</span>' : ''}</div>
+            <div class="sh-meta">${esc(e.song.artist)} · ${esc(e.playerName)}</div>
+          </div>
+          <a class="sh-spotify-btn" href="${esc(e.song.url)}" target="_blank" rel="noopener">▶ Play</a>
+        </div>`;
+    }).join('');
+    return `
+      <div class="song-history-round">
+        <div class="song-history-prompt">Round ${round.round} · "${esc(round.prompt)}"</div>
+        ${entries}
+      </div>`;
+  }).join('');
+}
+
+function toggleSongHistory() {
+  const panel = document.getElementById('songHistoryPanel');
+  const btn = document.getElementById('songHistoryToggle');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '▲ Hide song list' : '🎵 See all songs from this game';
 }
 
 /* ─── UI HELPERS ─────────────────────────── */
