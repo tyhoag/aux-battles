@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AUX BATTLES — by HUNNAX Games</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── RESET & BASE ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:           #07080F;
+      --bg2:          #0E0F1C;
+      --bg3:          #161829;
+      --gold:         #F5A623;
+      --gold-bright:  #FFB83F;
+      --gold-dim:     #9A6A15;
+      --purple:       #8B2FBE;
+      --purple-light: #A855F7;
+      --green:        #10B981;
+      --red:          #EF4444;
+      --blue:         #3B82F6;
+      --text:         #F0F0FF;
+      --text-muted:   #7B7CA8;
+      --card-bg:      #12142A;
+      --card-border:  #2A2D52;
+      --radius:       14px;
+      --font-head:    'Bebas Neue', sans-serif;
+      --font-body:    'Outfit', sans-serif;
+    }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--bg);
+      font-family: var(--font-body);
+      color: var(--text);
+    }
+
+    /* ─── SCREEN SYSTEM ────────────────────────────────────────────── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+      overflow-y: auto;
+    }
+    .screen.active { opacity: 1; pointer-events: all; }
+
+    /* ─── NOISE TEXTURE OVERLAY ────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .screen > * { position: relative; z-index: 1; }
+
+    /* ─── BUTTONS ───────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 14px 32px; border-radius: 50px; border: none; cursor: pointer;
+      font-family: var(--font-body); font-size: 16px; font-weight: 700;
+      letter-spacing: 0.5px; transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold) 0%, #E8920A 100%);
+      color: #000; box-shadow: 0 4px 24px rgba(245,166,35,0.4);
+    }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(245,166,35,0.6); }
+    .btn-gold:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      border: 2px solid var(--card-border);
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-purple {
+      background: linear-gradient(135deg, var(--purple) 0%, #6B21A8 100%);
+      color: #fff; box-shadow: 0 4px 24px rgba(139,47,190,0.4);
+    }
+    .btn-purple:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(139,47,190,0.6); }
+    .btn-green {
+      background: linear-gradient(135deg, var(--green) 0%, #059669 100%);
+      color: #fff; box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+    }
+    .btn-green:hover { transform: translateY(-2px); }
+    .btn-sm { padding: 10px 20px; font-size: 14px; }
+    .btn-lg { padding: 18px 44px; font-size: 18px; }
+    .btn:active { transform: scale(0.97); }
+
+    /* ─── CARD COMPONENT ────────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    /* ─── GLOW EFFECTS ──────────────────────────────────────────────── */
+    .glow-gold { box-shadow: 0 0 40px rgba(245,166,35,0.25); }
+    .glow-purple { box-shadow: 0 0 40px rgba(139,47,190,0.25); }
+
+    /* ─── AVATAR ────────────────────────────────────────────────────── */
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* ─── WAVEFORM ANIMATION ────────────────────────────────────────── */
+    .wave { display: flex; align-items: center; gap: 3px; height: 24px; }
+    .wave-bar {
+      width: 3px; border-radius: 2px;
+      background: var(--gold);
+      animation: wavePulse 0.8s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(1){ height: 8px;  animation-delay: 0.0s; }
+    .wave-bar:nth-child(2){ height: 16px; animation-delay: 0.1s; }
+    .wave-bar:nth-child(3){ height: 22px; animation-delay: 0.2s; }
+    .wave-bar:nth-child(4){ height: 14px; animation-delay: 0.3s; }
+    .wave-bar:nth-child(5){ height: 20px; animation-delay: 0.15s; }
+    .wave-bar:nth-child(6){ height: 10px; animation-delay: 0.25s; }
+    .wave-bar:nth-child(7){ height: 18px; animation-delay: 0.05s; }
+    @keyframes wavePulse {
+      0%,100%{ transform: scaleY(0.4); opacity:0.6; }
+      50%    { transform: scaleY(1.0); opacity:1.0; }
+    }
+
+    /* ─── PROGRESS DOTS ─────────────────────────────────────────────── */
+    .score-dots { display: flex; gap: 8px; }
+    .score-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--card-border);
+      transition: all 0.3s ease;
+    }
+    .score-dot.filled {
+      background: var(--gold);
+      border-color: var(--gold);
+      box-shadow: 0 0 8px rgba(245,166,35,0.8);
+    }
+
+    /* ─── TIMER BAR ─────────────────────────────────────────────────── */
+    .timer-bar-wrap {
+      width: 100%; height: 6px;
+      background: var(--card-border);
+      border-radius: 3px; overflow: hidden;
+    }
+    .timer-bar {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--purple-light));
+      border-radius: 3px;
+      transform-origin: left;
+    }
+    .timer-bar.running {
+      animation: timerDrain 45s linear forwards;
+    }
+    @keyframes timerDrain {
+      from { transform: scaleX(1); }
+      to   { transform: scaleX(0); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 1 — HOME
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-home {
+      background: radial-gradient(ellipse at 50% 40%, #1A0D30 0%, var(--bg) 70%);
+    }
+    .home-glow {
+      position: absolute; width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(139,47,190,0.15) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    .home-logo {
+      text-align: center; margin-bottom: 8px;
+    }
+    .logo-eyebrow {
+      font-size: 13px; letter-spacing: 6px; text-transform: uppercase;
+      color: var(--gold); opacity: 0.9; margin-bottom: 6px;
+    }
+    .logo-main {
+      font-family: var(--font-head);
+      font-size: clamp(72px, 14vw, 120px);
+      line-height: 0.9;
+      background: linear-gradient(135deg, #FFD36E 0%, var(--gold) 40%, #E8920A 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(245,166,35,0.5));
+      letter-spacing: 2px;
+    }
+    .logo-sub {
+      font-family: var(--font-head);
+      font-size: clamp(32px, 6vw, 52px);
+      color: var(--text); letter-spacing: 12px;
+      opacity: 0.5; margin-top: -4px;
+    }
+    .home-tagline {
+      font-size: 16px; color: var(--text-muted);
+      margin: 18px 0 24px; text-align: center;
+      max-width: 360px;
+    }
+    .home-tagline span { color: var(--gold); font-weight: 600; }
+    .home-btns { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 320px; }
+    .home-btns .btn { width: 100%; }
+    .home-footer {
+      position: absolute; bottom: 24px;
+      font-size: 11px; color: var(--text-muted); letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .music-note {
+      position: absolute; font-size: 24px; opacity: 0;
+      animation: floatNote 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes floatNote {
+      0%   { opacity: 0; transform: translateY(0) rotate(0deg); }
+      20%  { opacity: 0.3; }
+      80%  { opacity: 0.15; }
+      100% { opacity: 0; transform: translateY(-120px) rotate(20deg); }
+    }
+    .home-error {
+      font-size: 13px; color: var(--red); min-height: 18px;
+      text-align: center; margin-bottom: 4px;
+    }
+    .join-panel {
+      width: 100%; max-width: 320px;
+      flex-direction: column; gap: 10px;
+      margin-top: -4px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 2 — LOBBY
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-lobby { gap: 20px; justify-content: flex-start; padding-top: 40px; }
+    .lobby-header { text-align: center; width: 100%; }
+    .lobby-header h2 {
+      font-family: var(--font-head); font-size: 40px;
+      color: var(--text); letter-spacing: 2px;
+    }
+    .room-code-box {
+      background: var(--bg3); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 10px 20px;
+      display: inline-flex; align-items: center; gap: 10px;
+      margin-top: 8px; cursor: pointer;
+    }
+    .room-code-box:hover { border-color: var(--gold); }
+    .room-code-label { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: var(--text-muted); }
+    .room-code { font-family: var(--font-head); font-size: 28px; color: var(--gold); letter-spacing: 6px; }
+    .copy-hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .lobby-section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 3px;
+      color: var(--text-muted); margin-bottom: 12px;
+    }
+    .player-list { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 10px; }
+    .player-item {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 12px 16px;
+      transition: border-color 0.2s;
+    }
+    .player-item.you { border-color: var(--gold); background: rgba(245,166,35,0.05); }
+    .player-item.ready .player-status { color: var(--green); }
+    .player-name { flex: 1; font-weight: 600; font-size: 15px; }
+    .you-tag {
+      font-size: 10px; background: var(--gold); color: #000;
+      padding: 2px 8px; border-radius: 20px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .player-status { font-size: 13px; color: var(--text-muted); }
+    .join-slot {
+      border: 1px dashed var(--card-border); border-radius: 10px;
+      padding: 12px 16px; display: flex; align-items: center; gap: 14px;
+      opacity: 0.4;
+    }
+    .lobby-actions { width: 100%; max-width: 460px; margin-top: 4px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 3 — PROMPT REVEAL
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-prompt {
+      background: radial-gradient(ellipse at 50% 50%, #1A0A30 0%, var(--bg) 65%);
+      gap: 24px;
+    }
+    .round-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg3); border: 1px solid var(--card-border);
+      border-radius: 50px; padding: 6px 16px;
+    }
+    .round-badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:0.5; transform:scale(1.3); } }
+    .round-badge-text { font-size: 12px; text-transform: uppercase; letter-spacing: 3px; color: var(--text-muted); }
+    .prompt-flip-container { perspective: 1000px; width: 100%; max-width: 480px; }
+    .prompt-flip-inner {
+      position: relative; width: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.4,0,0.2,1);
+    }
+    .prompt-flip-inner.flipped { transform: rotateY(180deg); }
+    .prompt-card-face {
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      border-radius: 20px; padding: 40px 32px;
+      min-height: 280px; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+    }
+    .prompt-card-back {
+      background: linear-gradient(135deg, #1D0F35 0%, #2A1050 100%);
+      border: 2px solid var(--purple);
+      box-shadow: 0 0 40px rgba(139,47,190,0.3);
+    }
+    .prompt-card-back .card-back-logo {
+      font-family: var(--font-head); font-size: 56px;
+      background: linear-gradient(135deg, var(--gold), var(--purple-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .prompt-card-back .card-back-sub {
+      font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .prompt-card-front {
+      background: linear-gradient(145deg, #1A1F3C 0%, #0F1225 100%);
+      border: 2px solid var(--gold);
+      box-shadow: 0 0 40px rgba(245,166,35,0.2);
+      position: absolute; top: 0; left: 0; right: 0;
+      transform: rotateY(180deg);
+    }
+    .prompt-card-front .prompt-icon { font-size: 36px; margin-bottom: 8px; }
+    .prompt-card-front .prompt-text {
+      font-size: clamp(18px, 3.5vw, 24px); font-weight: 700; text-align: center;
+      line-height: 1.35; color: var(--text);
+    }
+    .prompt-card-front .prompt-hint {
+      font-size: 13px; color: var(--text-muted); margin-top: 8px; text-align: center;
+    }
+    .flip-hint {
+      font-size: 13px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .flip-hint.hidden { opacity: 0; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 4 — SONG SUBMISSION
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-submit { gap: 18px; justify-content: flex-start; padding-top: 36px; }
+    .submit-prompt-strip {
+      width: 100%; max-width: 560px;
+      background: var(--bg3); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 14px 18px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .submit-prompt-strip .icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+    .submit-prompt-strip p { font-size: 14px; color: var(--text); line-height: 1.4; font-weight: 500; }
+    .submit-form { width: 100%; max-width: 560px; flex-direction: column; gap: 12px; }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-label { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); }
+    .input-field {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 14px 16px;
+      font-family: var(--font-body); font-size: 15px; font-weight: 500; color: var(--text);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .input-field:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245,166,35,0.15); }
+    .input-field::placeholder { color: var(--text-muted); font-weight: 400; }
+    .submit-players { width: 100%; max-width: 560px; }
+    .submit-players-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+    .submit-player-chip {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 8px; border-radius: 10px;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+    }
+    .submit-player-chip .chip-name { font-size: 12px; font-weight: 600; }
+    .chip-status { font-size: 11px; color: var(--text-muted); }
+    .chip-status.done { color: var(--green); }
+    .chip-status.waiting { color: var(--gold); }
+
+    /* ─── SEARCH UI ─────────────────────────────────────────────────── */
+    .search-container { position: relative; width: 100%; }
+    .search-results {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+      background: var(--bg3); border: 1px solid var(--card-border);
+      border-radius: 12px; overflow: hidden;
+      max-height: 260px; overflow-y: auto;
+    }
+    .search-result-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .search-result-item:hover { background: var(--card-bg); }
+    .search-result-item + .search-result-item { border-top: 1px solid var(--card-border); }
+    .search-result-art { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; object-fit: cover; }
+    .search-result-info { flex: 1; min-width: 0; }
+    .search-result-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-result-artist { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ─── SELECTED SONG CARD ────────────────────────────────────────── */
+    .selected-song-card {
+      align-items: center; gap: 14px;
+      background: rgba(16,185,129,0.06); border: 2px solid var(--green);
+      border-radius: 12px; padding: 14px 16px;
+      box-shadow: 0 0 20px rgba(16,185,129,0.12);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 5 — LISTENING / REVEAL
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-reveal { gap: 20px; justify-content: flex-start; padding-top: 36px; }
+    .reveal-header { text-align: center; width: 100%; }
+    .reveal-header h2 { font-family: var(--font-head); font-size: 42px; color: var(--text); letter-spacing: 2px; }
+    .reveal-header p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .song-cards-grid { width: 100%; max-width: 600px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .song-card {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 18px;
+      display: flex; flex-direction: column; gap: 12px;
+      cursor: default; transition: all 0.2s ease;
+      position: relative; overflow: hidden;
+    }
+    .song-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: transparent; transition: background 0.3s;
+    }
+    .song-card.playing::before { background: linear-gradient(90deg, var(--gold), var(--purple-light)); }
+    .song-card.playing { border-color: rgba(245,166,35,0.4); }
+    .song-card-header { display: flex; align-items: center; gap: 10px; }
+    .song-card-header .avatar { width: 36px; height: 36px; font-size: 14px; }
+    .song-card-player-name { font-size: 13px; font-weight: 600; flex: 1; }
+    .album-art {
+      width: 100%; aspect-ratio: 1; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 44px;
+      background: linear-gradient(135deg, var(--bg3) 0%, #1A1040 100%);
+    }
+    .song-title { font-weight: 700; font-size: 15px; line-height: 1.2; }
+    .song-artist { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .reveal-hint { font-size: 13px; color: var(--text-muted); text-align: center; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 6 — VOTING
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-vote { gap: 20px; justify-content: flex-start; padding-top: 36px; }
+    .vote-header { text-align: center; width: 100%; }
+    .vote-header h2 { font-family: var(--font-head); font-size: 42px; }
+    .vote-header p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .vote-cards { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 12px; }
+    .vote-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--card-bg); border: 2px solid var(--card-border);
+      border-radius: 14px; padding: 16px 18px;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .vote-card:hover { border-color: var(--purple-light); background: rgba(139,47,190,0.08); transform: translateX(4px); }
+    .vote-card.selected { border-color: var(--green); background: rgba(16,185,129,0.08); }
+    .vote-card-body { flex: 1; }
+    .vote-song-name { font-weight: 700; font-size: 16px; }
+    .vote-song-artist { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .vote-btn {
+      width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--card-border);
+      background: transparent; color: var(--text-muted); font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .vote-card:hover .vote-btn { border-color: var(--purple-light); color: var(--purple-light); }
+    .vote-card.selected .vote-btn { border-color: var(--green); background: var(--green); color: #fff; }
+    .vote-footer { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
+    .vote-self-note { font-size: 12px; color: var(--text-muted); text-align: center; font-style: italic; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 7 — ROUND WINNER
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-winner {
+      background: radial-gradient(ellipse at 50% 50%, #1A2A10 0%, var(--bg) 65%);
+      gap: 20px;
+    }
+    .winner-label {
+      font-size: 13px; text-transform: uppercase; letter-spacing: 5px; color: var(--text-muted);
+    }
+    .winner-name {
+      font-family: var(--font-head);
+      font-size: clamp(56px, 12vw, 96px);
+      background: linear-gradient(135deg, #FFD36E 0%, var(--gold) 60%, #E8920A 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(245,166,35,0.6));
+      line-height: 1; text-align: center;
+    }
+    .winner-song-box {
+      background: var(--card-bg); border: 2px solid var(--green);
+      border-radius: 16px; padding: 20px 28px;
+      display: flex; align-items: center; gap: 16px;
+      max-width: 440px; width: 100%;
+      box-shadow: 0 0 32px rgba(16,185,129,0.2);
+    }
+    .winner-song-icon { font-size: 42px; }
+    .winner-song-title { font-size: 18px; font-weight: 700; }
+    .winner-song-artist { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+    .scores-row {
+      display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+      max-width: 500px; width: 100%;
+    }
+    .score-chip {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 14px 18px; min-width: 90px;
+    }
+    .score-chip.winner-chip { border-color: var(--gold); background: rgba(245,166,35,0.06); }
+    .score-chip-name { font-size: 13px; font-weight: 600; }
+    .score-chip-count { font-family: var(--font-head); font-size: 32px; color: var(--gold); line-height: 1; }
+    .score-chip-dots { display: flex; gap: 4px; }
+    .score-chip-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--card-border); }
+    .score-chip-dot.filled { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(245,166,35,0.8); }
+    .confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .confetti-bit {
+      position: absolute; width: 8px; height: 8px; border-radius: 2px;
+      animation: confettiFall 3s ease-in forwards;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+    .reveal-list {
+      width: 100%; max-width: 440px;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 16px 20px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .reveal-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+    }
+    .reveal-row + .reveal-row { border-top: 1px solid var(--card-border); }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SCREEN 8 — GAME OVER
+    ═══════════════════════════════════════════════════════════════════ */
+    #screen-gameover {
+      background: radial-gradient(ellipse at 50% 40%, #200D38 0%, var(--bg) 65%);
+      gap: 24px;
+    }
+    .champion-label { font-size: 13px; text-transform: uppercase; letter-spacing: 5px; color: var(--gold); }
+    .trophy-icon { font-size: 72px; filter: drop-shadow(0 0 24px rgba(245,166,35,0.6)); animation: trophyBounce 2s ease-in-out infinite; }
+    @keyframes trophyBounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+    .champion-name {
+      font-family: var(--font-head);
+      font-size: clamp(52px, 12vw, 90px);
+      background: linear-gradient(135deg, #FFD36E 0%, var(--gold) 60%, var(--purple-light) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center; line-height: 1;
+    }
+    .champion-score { font-size: 14px; color: var(--text-muted); text-align: center; }
+    .champion-score span { color: var(--gold); font-weight: 700; }
+    .final-leaderboard { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
+    .lb-row {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 12px 16px;
+    }
+    .lb-row.lb-first { border-color: var(--gold); background: rgba(245,166,35,0.07); }
+    .lb-rank { font-family: var(--font-head); font-size: 24px; color: var(--text-muted); width: 28px; }
+    .lb-row.lb-first .lb-rank { color: var(--gold); }
+    .lb-name { flex: 1; font-weight: 600; font-size: 15px; }
+    .lb-pts { font-family: var(--font-head); font-size: 28px; color: var(--gold); }
+    .lb-pts-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .gameover-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+    @media (max-width: 480px) {
+      .song-cards-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .scores-row { gap: 10px; }
+      .score-chip { min-width: 80px; padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 1 — HOME
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="home-glow"></div>
+  <span class="music-note" style="left:12%;top:70%;animation-delay:0s;animation-duration:7s">♪</span>
+  <span class="music-note" style="left:25%;top:80%;animation-delay:1.2s;animation-duration:9s;color:var(--purple-light)">♫</span>
+  <span class="music-note" style="left:68%;top:72%;animation-delay:0.6s;animation-duration:8s;color:var(--gold)">♩</span>
+  <span class="music-note" style="left:80%;top:78%;animation-delay:2s;animation-duration:6.5s">♬</span>
+  <span class="music-note" style="left:45%;top:85%;animation-delay:3s;animation-duration:10s;color:var(--purple-light)">♪</span>
+
+  <div class="home-logo">
+    <div class="logo-eyebrow">HUNNAX GAMES presents</div>
+    <div class="logo-main">AUX</div>
+    <div class="logo-sub">BATTLES</div>
+  </div>
+
+  <p class="home-tagline">Your <span>music taste</span> vs. theirs. Pick the perfect song. Win the crowd.</p>
+
+  <input class="input-field" id="playerName" type="text" placeholder="Enter your name…" maxlength="20"
+    style="width:100%;max-width:320px;text-align:center;margin-bottom:2px;"
+    onkeydown="if(event.key==='Enter')hostGame()" />
+  <div class="home-error" id="home-error"></div>
+
+  <div class="home-btns">
+    <button class="btn btn-gold btn-lg" onclick="hostGame()">🎵 Host a Game</button>
+    <button class="btn btn-outline btn-lg" onclick="toggleJoinPanel()">🔗 Join a Game</button>
+  </div>
+
+  <div class="join-panel" id="join-panel" style="display:none;">
+    <input class="input-field" id="roomCodeInput" type="text" placeholder="Room code (e.g. AB3X)"
+      maxlength="4" style="text-align:center;font-size:22px;letter-spacing:8px;text-transform:uppercase;"
+      oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')joinGame()" />
+    <button class="btn btn-gold" onclick="joinGame()" style="width:100%;">Join →</button>
+  </div>
+
+  <div class="home-footer">© 2025 HUNNAX Games — Aux Battles</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 2 — LOBBY
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-lobby">
+  <div class="lobby-header">
+    <h2>GAME LOBBY</h2>
+    <div class="room-code-box" onclick="copyRoomCode()" title="Tap to copy">
+      <div>
+        <div class="room-code-label">Room Code</div>
+        <div class="room-code" id="lobbyRoomCode">----</div>
+      </div>
+      <div style="font-size:18px;color:var(--text-muted)">📋</div>
+    </div>
+    <div class="copy-hint" id="copyHint">tap to copy</div>
+  </div>
+
+  <div style="width:100%;max-width:460px;">
+    <div class="lobby-section-title">Players (<span id="playerCount">0</span>/8)</div>
+    <div class="player-list" id="playerList"></div>
+  </div>
+
+  <div class="lobby-actions">
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;">
+      <span style="font-size:18px">🎯</span>
+      <div style="flex:1;font-size:13px;color:var(--text-muted)">First to <strong style="color:var(--text)">5 cards</strong> wins · Need at least 3 players</div>
+    </div>
+    <button class="btn btn-gold" style="width:100%;display:none;" id="startGameBtn" onclick="startGame()">Start Game →</button>
+    <div id="waitingMsg" style="display:none;font-size:14px;color:var(--text-muted);text-align:center;padding:10px;">Waiting for host to start…</div>
+    <button class="btn btn-outline btn-sm" style="width:100%" onclick="location.reload()">← Leave Room</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 3 — PROMPT REVEAL
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-prompt">
+  <div class="round-badge">
+    <div class="round-badge-dot"></div>
+    <span class="round-badge-text" id="roundBadgeText">Round 1</span>
+  </div>
+
+  <div style="text-align:center;">
+    <div style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:3px;margin-bottom:6px">Prompt Card</div>
+    <div style="font-family:var(--font-head);font-size:28px;color:var(--text)">Tap to Reveal</div>
+  </div>
+
+  <div class="prompt-flip-container" id="flipContainer" onclick="flipCard()">
+    <div class="prompt-flip-inner" id="flipInner">
+      <div class="prompt-card-face prompt-card-back">
+        <div class="card-back-logo">AUX</div>
+        <div class="card-back-sub">Tap to flip</div>
+      </div>
+      <div class="prompt-card-face prompt-card-front">
+        <div class="prompt-icon">🎵</div>
+        <div class="prompt-text" id="promptCardText"></div>
+        <div class="prompt-hint">What's your pick?</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="flip-hint" id="flipHint">👆 Tap the card to flip it</p>
+
+  <button class="btn btn-gold" id="promptNextBtn" style="display:none" onclick="onPromptNext()">
+    Choose Your Song →
+  </button>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 4 — SONG SUBMISSION
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-submit">
+  <div style="width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div class="round-badge">
+      <div class="round-badge-dot"></div>
+      <span class="round-badge-text" id="submitRoundBadge">Round 1</span>
+    </div>
+    <div id="countdownDisplay" style="font-family:var(--font-head);font-size:28px;color:var(--gold)">45</div>
+  </div>
+
+  <div class="timer-bar-wrap" style="width:100%;max-width:560px;">
+    <div class="timer-bar" id="timerBar"></div>
+  </div>
+
+  <div class="submit-prompt-strip">
+    <span class="icon">🎵</span>
+    <p id="submitPromptText"></p>
+  </div>
+
+  <!-- Judge view -->
+  <div id="judgeSubmitArea" style="display:none;flex-direction:column;align-items:center;text-align:center;gap:16px;width:100%;max-width:560px;">
+    <div class="card" style="width:100%;padding:32px 24px;">
+      <div style="font-size:52px;margin-bottom:12px;">⚖️</div>
+      <h3 style="font-family:var(--font-head);font-size:36px;color:var(--gold);letter-spacing:2px;">YOU'RE THE JUDGE</h3>
+      <p style="color:var(--text-muted);margin-top:10px;line-height:1.5;">Everyone is picking their song.<br>Listen to each one carefully — you'll pick the winner.</p>
+    </div>
+  </div>
+
+  <!-- Player submission form -->
+  <div class="submit-form" id="submissionFormArea" style="display:flex;">
+    <div class="input-group">
+      <label class="input-label">Search for a Song</label>
+      <div class="search-container">
+        <input class="input-field" id="searchInput" type="text" placeholder="e.g. Blinding Lights, Eminem…"
+          oninput="handleSearch(this.value)" autocomplete="off" />
+        <div id="searchResults" class="search-results" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="selected-song-card" id="selectedSong" style="display:none;">
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:16px;" id="selectedSongTitle"></div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px;" id="selectedSongArtist"></div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="clearSongSelection()">✕ Change</button>
+    </div>
+
+    <button class="btn btn-gold" id="submitBtn" style="width:100%;" onclick="submitSong()" disabled>
+      🎵 Lock In My Pick
+    </button>
+  </div>
+
+  <div style="width:100%;max-width:560px;text-align:center;">
+    <div style="font-size:13px;color:var(--text-muted);" id="submissionProgress">Waiting for submissions…</div>
+  </div>
+
+  <div class="submit-players" style="width:100%;max-width:560px;">
+    <div class="lobby-section-title">Player Status</div>
+    <div class="submit-players-grid" id="submitPlayerGrid"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 5 — REVEAL / LISTENING
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-reveal">
+  <div class="reveal-header" id="revealHeader">
+    <h2 id="revealHeaderTitle">🎧 ALL PICKS ARE IN</h2>
+    <p id="revealHeaderSub">Listen to each one — judge picks after</p>
+  </div>
+
+  <div class="song-cards-grid" id="songCardsGrid"></div>
+
+  <div id="startVotingBtn" style="display:none;">
+    <button class="btn btn-gold btn-lg" onclick="startVoting()">Done Playing → Start Voting</button>
+  </div>
+  <p class="reveal-hint" id="listeningHint" style="display:none;">🎧 Listen carefully — the judge will decide!</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 6 — VOTING
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-vote">
+  <div class="vote-header">
+    <h2>CAST YOUR VOTE</h2>
+    <p id="voteSubhead">Judge picks the best song</p>
+  </div>
+
+  <!-- Judge sees vote options -->
+  <div id="voteJudgeArea" style="display:none;width:100%;">
+    <div class="vote-cards" id="voteCards"></div>
+    <div class="vote-footer" style="margin-top:12px;">
+      <p class="vote-self-note">Pick the song that best fits the prompt</p>
+      <button class="btn btn-green" id="confirmVoteBtn" style="width:100%;display:none;" onclick="confirmVote()">
+        ✓ Confirm Vote
+      </button>
+    </div>
+  </div>
+
+  <!-- Non-judge waits -->
+  <div id="voteWaitArea" style="display:none;text-align:center;padding:40px 0;">
+    <div style="font-size:64px;margin-bottom:16px;">⚖️</div>
+    <h3 style="font-family:var(--font-head);font-size:36px;letter-spacing:2px;margin-bottom:10px;">THE JUDGE IS DECIDING</h3>
+    <p style="color:var(--text-muted);">Sit tight…</p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 7 — ROUND WINNER
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-winner">
+  <div class="confetti" id="confetti"></div>
+
+  <div class="winner-label">Round Winner</div>
+  <div class="winner-name" id="winnerNameDisplay"></div>
+
+  <div class="winner-song-box">
+    <div class="winner-song-icon">🎵</div>
+    <div>
+      <div class="winner-song-title" id="winnerSongTitle"></div>
+      <div class="winner-song-artist" id="winnerSongArtist"></div>
+    </div>
+  </div>
+
+  <div class="reveal-list" id="winnerReveal"></div>
+
+  <div style="text-align:center;width:100%;">
+    <div style="font-size:13px;text-transform:uppercase;letter-spacing:3px;color:var(--text-muted);margin-bottom:16px;">Scores</div>
+    <div class="scores-row" id="scoresRow"></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <button class="btn btn-gold" id="nextRoundBtn" style="display:none;" onclick="nextRound()">Next Round ↺</button>
+    <div id="waitingNextMsg" style="display:none;font-size:14px;color:var(--text-muted);text-align:center;padding:12px;">
+      Waiting for host to start next round…
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 8 — GAME OVER / CHAMPION
+═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-gameover">
+  <div class="confetti" id="confetti2"></div>
+
+  <div class="champion-label">🏆 Game Over · Champion</div>
+  <div class="trophy-icon">🏆</div>
+  <div class="champion-name" id="championName"></div>
+  <div class="champion-score" id="championScore"></div>
+
+  <div class="final-leaderboard" id="finalLeaderboard"></div>
+
+  <div class="gameover-actions">
+    <button class="btn btn-gold btn-lg" onclick="location.reload()">🎲 Play Again</button>
+    <button class="btn btn-outline" onclick="location.reload()">🏠 Home</button>
+  </div>
+</div>
+
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+/* ─── CONSTANTS ──────────────────────────── */
+const AC = [
+  { bg: 'rgba(245,166,35,0.15)',  fg: 'var(--gold)' },
+  { bg: 'rgba(139,47,190,0.15)',  fg: 'var(--purple-light)' },
+  { bg: 'rgba(16,185,129,0.15)', fg: 'var(--green)' },
+  { bg: 'rgba(59,130,246,0.15)', fg: 'var(--blue)' },
+  { bg: 'rgba(248,113,113,0.15)',fg: '#F87171' },
+  { bg: 'rgba(52,211,153,0.15)', fg: '#34D399' },
+  { bg: 'rgba(251,191,36,0.15)', fg: '#FBBF24' },
+  { bg: 'rgba(167,139,250,0.15)',fg: '#A78BFA' },
+];
+const WIN_SCORE = 5;
+
+/* ─── STATE ──────────────────────────────── */
+const state = {
+  me: null,
+  room: null,
+  currentJudge: null,
+  isJudge: false,
+  selectedSong: null,
+  submitted: false,
+  searchResults: [],
+  searchTimeout: null,
+  pendingVoteId: null,
+};
+
+/* ─── SOCKET ─────────────────────────────── */
+const socket = io();
+
+socket.on('room_created', ({ code, player, room }) => {
+  state.me = player;
+  state.room = room;
+  renderLobby();
+  goTo('screen-lobby');
+});
+
+socket.on('room_joined', ({ player, room }) => {
+  state.me = player;
+  state.room = room;
+  renderLobby();
+  goTo('screen-lobby');
+});
+
+socket.on('player_joined', ({ room }) => {
+  state.room = room;
+  renderLobby();
+});
+
+socket.on('player_left', ({ room }) => {
+  state.room = room;
+  state.me = room.players.find(p => p.id === socket.id) || state.me;
+  renderLobby();
+});
+
+socket.on('round_started', ({ prompt, judge, players, round }) => {
+  state.room.players = players;
+  state.room.prompt = prompt;
+  state.currentJudge = judge;
+  state.isJudge = judge.id === socket.id;
+  state.selectedSong = null;
+  state.submitted = false;
+
+  document.getElementById('roundBadgeText').textContent = `Round ${round}`;
+  document.getElementById('promptCardText').textContent = `"${prompt}"`;
+  document.getElementById('promptNextBtn').textContent =
+    state.isJudge ? "I'm the Judge — Let's Go ⚖️" : "Choose Your Song →";
+
+  resetFlip();
+  goTo('screen-prompt');
+});
+
+socket.on('submission_update', ({ count, total }) => {
+  const el = document.getElementById('submissionProgress');
+  if (el) el.textContent = `${count} / ${total} locked in`;
+});
+
+socket.on('playback_started', ({ submissions }) => {
+  renderPlayback(submissions);
+  goTo('screen-reveal');
+});
+
+socket.on('voting_started', ({ submissions, judgeId }) => {
+  renderVoting(submissions, judgeId);
+  goTo('screen-vote');
+});
+
+socket.on('round_results', (data) => {
+  renderResults(data);
+  goTo('screen-winner');
+});
+
+socket.on('error', ({ message }) => {
+  showHomeError(message);
+});
+
+/* ─── USER ACTIONS ───────────────────────── */
+function hostGame() {
+  const name = getPlayerName();
+  if (!name) return;
+  socket.emit('create_room', { playerName: name });
+}
+
+function toggleJoinPanel() {
+  const panel = document.getElementById('join-panel');
+  const open = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = open ? 'flex' : 'none';
+  if (open) document.getElementById('roomCodeInput').focus();
+}
+
+function joinGame() {
+  const name = getPlayerName();
+  if (!name) return;
+  const code = (document.getElementById('roomCodeInput').value || '').trim().toUpperCase();
+  if (code.length !== 4) { showHomeError('Enter a 4-letter room code.'); return; }
+  socket.emit('join_room', { roomCode: code, playerName: name });
+}
+
+function getPlayerName() {
+  const name = (document.getElementById('playerName').value || '').trim();
+  if (!name) { showHomeError('Enter your name first!'); return null; }
+  return name;
+}
+
+function showHomeError(msg) {
+  const el = document.getElementById('home-error');
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+}
+
+function startGame() { socket.emit('start_game'); }
+
+function onPromptNext() {
+  renderSubmitScreen();
+  goTo('screen-submit');
+  startTimer();
+}
+
+function submitSong() {
+  if (!state.selectedSong || state.submitted) return;
+  state.submitted = true;
+  clearInterval(timerInterval);
+  socket.emit('submit_song', { song: state.selectedSong });
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '✓ Locked In!';
+}
+
+function startVoting() { socket.emit('start_voting'); }
+
+function castVote(playerId) {
+  state.pendingVoteId = playerId;
+  document.querySelectorAll('.vote-card').forEach(c => {
+    c.classList.remove('selected');
+    c.querySelector('.vote-btn').textContent = '♡';
+  });
+  const card = document.getElementById('vc-' + playerId);
+  if (card) {
+    card.classList.add('selected');
+    card.querySelector('.vote-btn').textContent = '♥';
+  }
+  document.getElementById('confirmVoteBtn').style.display = 'block';
+}
+
+function confirmVote() {
+  if (!state.pendingVoteId) return;
+  socket.emit('cast_vote', { playerId: state.pendingVoteId });
+  const btn = document.getElementById('confirmVoteBtn');
+  btn.disabled = true;
+  btn.textContent = '✓ Vote Cast!';
+}
+
+function nextRound() { socket.emit('next_round'); }
+
+function copyRoomCode() {
+  const code = document.getElementById('lobbyRoomCode').textContent;
+  navigator.clipboard.writeText(code).catch(() => {});
+  const el = document.getElementById('copyHint');
+  el.textContent = '✓ Copied!';
+  setTimeout(() => el.textContent = 'tap to copy', 2000);
+}
+
+/* ─── SPOTIFY SEARCH ─────────────────────── */
+function handleSearch(query) {
+  clearTimeout(state.searchTimeout);
+  const results = document.getElementById('searchResults');
+  if (query.trim().length < 2) { results.innerHTML = ''; results.style.display = 'none'; return; }
+
+  results.innerHTML = '<div style="padding:12px 14px;color:var(--text-muted);font-size:14px;">Searching…</div>';
+  results.style.display = 'block';
+
+  state.searchTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
+      const { tracks } = await res.json();
+      state.searchResults = tracks || [];
+      if (!state.searchResults.length) {
+        results.innerHTML = '<div style="padding:12px 14px;color:var(--text-muted);font-size:14px;">No results — try a different search</div>';
+        return;
+      }
+      results.innerHTML = state.searchResults.map((t, i) => `
+        <div class="search-result-item" onclick="selectSong(${i})">
+          ${t.image
+            ? `<img src="${t.image}" alt="" class="search-result-art" />`
+            : `<div class="search-result-art" style="background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px;">🎵</div>`}
+          <div class="search-result-info">
+            <div class="search-result-title">${esc(t.title)}</div>
+            <div class="search-result-artist">${esc(t.artist)}</div>
+          </div>
+        </div>
+      `).join('');
+    } catch {
+      results.innerHTML = '<div style="padding:12px 14px;color:var(--red);font-size:14px;">Search failed. Check connection.</div>';
+    }
+  }, 300);
+}
+
+function selectSong(i) {
+  const track = state.searchResults[i];
+  if (!track) return;
+  state.selectedSong = track;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('selectedSong').style.display = 'flex';
+  document.getElementById('selectedSongTitle').textContent = track.title;
+  document.getElementById('selectedSongArtist').textContent = track.artist;
+  document.getElementById('submitBtn').disabled = false;
+}
+
+function clearSongSelection() {
+  state.selectedSong = null;
+  document.getElementById('selectedSong').style.display = 'none';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchInput').focus();
+}
+
+/* ─── RENDER FUNCTIONS ───────────────────── */
+function renderLobby() {
+  const { room, me } = state;
+  if (!room) return;
+  document.getElementById('lobbyRoomCode').textContent = room.code;
+  document.getElementById('playerCount').textContent = room.players.length;
+
+  document.getElementById('playerList').innerHTML =
+    room.players.map((p, i) => {
+      const c = AC[i % AC.length];
+      const isMe = p.id === socket.id;
+      return `
+        <div class="player-item ${isMe ? 'you ready' : 'ready'}">
+          <div class="avatar" style="background:${c.bg};color:${c.fg}">${p.name.slice(0,2).toUpperCase()}</div>
+          <div class="player-name">${esc(p.name)}${isMe ? ' <span class="you-tag">you</span>' : ''}</div>
+          <div class="player-status">${p.isHost ? '👑 Host' : '✓ Ready'}</div>
+        </div>`;
+    }).join('') +
+    `<div class="join-slot">
+      <div class="avatar" style="background:var(--bg3);color:var(--text-muted)">+</div>
+      <div style="font-size:14px;color:var(--text-muted)">Waiting for players…</div>
+    </div>`;
+
+  const isHost = me?.isHost;
+  document.getElementById('startGameBtn').style.display = isHost ? '' : 'none';
+  document.getElementById('waitingMsg').style.display = isHost ? 'none' : '';
+}
+
+function renderSubmitScreen() {
+  const { room, currentJudge, isJudge } = state;
+  document.getElementById('submitPromptText').textContent = `"${room.prompt}"`;
+  document.getElementById('submitRoundBadge').textContent = document.getElementById('roundBadgeText').textContent;
+
+  document.getElementById('judgeSubmitArea').style.display = isJudge ? 'flex' : 'none';
+  document.getElementById('submissionFormArea').style.display = isJudge ? 'none' : 'flex';
+
+  // Reset form state
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('selectedSong').style.display = 'none';
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '🎵 Lock In My Pick';
+
+  const nonJudge = room.players.filter(p => p.id !== currentJudge.id);
+  document.getElementById('submissionProgress').textContent = `0 / ${nonJudge.length} locked in`;
+  document.getElementById('submitPlayerGrid').innerHTML = nonJudge.map((p, i) => {
+    const c = AC[i % AC.length];
+    const isMe = p.id === socket.id;
+    return `
+      <div class="submit-player-chip">
+        <div class="avatar" style="background:${c.bg};color:${c.fg};width:36px;height:36px;font-size:13px;">${p.name.slice(0,2).toUpperCase()}</div>
+        <div class="chip-name">${isMe ? 'You' : esc(p.name)}</div>
+        <div class="chip-status waiting" id="chip-${p.id}">Picking…</div>
+      </div>`;
+  }).join('');
+}
+
+function renderPlayback(submissions) {
+  const isHost = state.me?.isHost;
+  document.getElementById('revealHeaderTitle').textContent = isHost ? '🎵 DJ QUEUE' : '🎧 ALL PICKS ARE IN';
+  document.getElementById('revealHeaderSub').textContent = isHost
+    ? 'Play each song in order on your speaker, then start voting'
+    : 'Listen to each one — the judge will pick the best';
+
+  document.getElementById('songCardsGrid').innerHTML = submissions.map((s, i) => {
+    const c = AC[i % AC.length];
+    const artEl = s.song.image
+      ? `<img src="${s.song.image}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;" />`
+      : `<div class="album-art">🎵</div>`;
+    const spotifyBtn = (isHost && s.song.url)
+      ? `<a href="${s.song.url}" target="_blank" class="btn btn-sm btn-purple" style="text-decoration:none;">▶ Play on Spotify</a>`
+      : '';
+    return `
+      <div class="song-card">
+        <div class="song-card-header">
+          <div class="avatar" style="background:${c.bg};color:${c.fg};width:36px;height:36px;font-size:14px;">${i + 1}</div>
+          <div class="song-card-player-name" style="color:var(--text-muted)">Song ${i + 1}</div>
+        </div>
+        ${artEl}
+        <div>
+          <div class="song-title">${esc(s.song.title)}</div>
+          <div class="song-artist">${esc(s.song.artist)}</div>
+        </div>
+        ${spotifyBtn}
+      </div>`;
+  }).join('');
+
+  document.getElementById('startVotingBtn').style.display = isHost ? '' : 'none';
+  document.getElementById('listeningHint').style.display = isHost ? 'none' : '';
+}
+
+function renderVoting(submissions, judgeId) {
+  const isJudge = socket.id === judgeId;
+  document.getElementById('voteJudgeArea').style.display = isJudge ? '' : 'none';
+  document.getElementById('voteWaitArea').style.display = isJudge ? 'none' : '';
+
+  if (!isJudge) return;
+  state.pendingVoteId = null;
+  const btn = document.getElementById('confirmVoteBtn');
+  btn.style.display = 'none';
+  btn.disabled = false;
+  btn.textContent = '✓ Confirm Vote';
+
+  document.getElementById('voteCards').innerHTML = submissions.map((s, i) => {
+    const c = AC[i % AC.length];
+    return `
+      <div class="vote-card" id="vc-${s.playerId}" onclick="castVote('${s.playerId}')">
+        <div class="avatar" style="background:${c.bg};color:${c.fg};width:40px;height:40px;font-size:16px;flex-shrink:0;">${i + 1}</div>
+        <div class="vote-card-body">
+          <div class="vote-song-name">${esc(s.song.title)}</div>
+          <div class="vote-song-artist">${esc(s.song.artist)}</div>
+        </div>
+        <div class="vote-btn">♡</div>
+      </div>`;
+  }).join('');
+}
+
+function renderResults({ winnerId, winnerName, winningSong, players, submissions }) {
+  document.getElementById('winnerNameDisplay').textContent = (winnerName || '???').toUpperCase();
+  document.getElementById('winnerSongTitle').textContent = winningSong?.title || '';
+  document.getElementById('winnerSongArtist').textContent = winningSong?.artist || '';
+
+  // Reveal who submitted what
+  document.getElementById('winnerReveal').innerHTML = submissions.map((s, i) => {
+    const c = AC[i % AC.length];
+    const won = s.playerId === winnerId;
+    return `
+      <div class="reveal-row">
+        <div class="avatar" style="background:${c.bg};color:${c.fg};width:32px;height:32px;font-size:12px;flex-shrink:0;">${(s.playerName||'?').slice(0,2).toUpperCase()}</div>
+        <div style="flex:1;">
+          <span style="font-weight:600;">${esc(s.playerName||'?')}</span>
+          <span style="color:var(--text-muted);font-size:13px;margin-left:6px;">→ ${esc(s.song.title)}</span>
+        </div>
+        ${won ? '<span style="color:var(--gold);">🏅</span>' : ''}
+      </div>`;
+  }).join('');
+
+  // Scores
+  document.getElementById('scoresRow').innerHTML = players.map((p, i) => {
+    const c = AC[i % AC.length];
+    const won = p.id === winnerId;
+    const dots = Array(WIN_SCORE).fill(0).map((_, di) =>
+      `<div class="score-chip-dot ${di < p.score ? 'filled' : ''}"></div>`
+    ).join('');
+    return `
+      <div class="score-chip ${won ? 'winner-chip' : ''}">
+        <div class="avatar" style="background:${c.bg};color:${c.fg};width:36px;height:36px;font-size:13px;">${p.name.slice(0,2).toUpperCase()}</div>
+        <div class="score-chip-name">${esc(p.name)}${won ? ' 🏅' : ''}</div>
+        <div class="score-chip-count">${p.score}</div>
+        <div class="score-chip-dots">${dots}</div>
+      </div>`;
+  }).join('');
+
+  const champion = players.find(p => p.score >= WIN_SCORE);
+  if (champion) {
+    setTimeout(() => { renderGameOver(players, champion); goTo('screen-gameover'); }, 4000);
+    return;
+  }
+
+  const isHost = state.me?.isHost;
+  document.getElementById('nextRoundBtn').style.display = isHost ? '' : 'none';
+  document.getElementById('waitingNextMsg').style.display = isHost ? 'none' : '';
+  spawnConfetti('confetti');
+}
+
+function renderGameOver(players, champion) {
+  document.getElementById('championName').textContent = champion.name.toUpperCase();
+  document.getElementById('championScore').innerHTML =
+    `Won with <span>${champion.score} card${champion.score !== 1 ? 's' : ''}</span>`;
+
+  const sorted = [...players].sort((a, b) => b.score - a.score);
+  const medals = ['🏆','🥈','🥉'];
+  document.getElementById('finalLeaderboard').innerHTML = sorted.map((p, i) => {
+    const c = AC[i % AC.length];
+    return `
+      <div class="lb-row ${i === 0 ? 'lb-first' : ''}">
+        <div class="lb-rank">${i + 1}</div>
+        <div class="avatar" style="background:${c.bg};color:${c.fg};width:36px;height:36px;font-size:13px;">${p.name.slice(0,2).toUpperCase()}</div>
+        <div class="lb-name">${esc(p.name)} ${medals[i] || ''}</div>
+        <div style="text-align:right;">
+          <div class="lb-pts">${p.score}</div>
+          <div class="lb-pts-label">${p.score === 1 ? 'card' : 'cards'}</div>
+        </div>
+      </div>`;
+  }).join('');
+  spawnConfetti('confetti2');
+}
+
+/* ─── UI HELPERS ─────────────────────────── */
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+let flipped = false;
+function flipCard() {
+  if (flipped) return;
+  document.getElementById('flipInner').classList.add('flipped');
+  document.getElementById('flipHint').classList.add('hidden');
+  setTimeout(() => { document.getElementById('promptNextBtn').style.display = 'inline-flex'; }, 600);
+  flipped = true;
+}
+function resetFlip() {
+  flipped = false;
+  document.getElementById('flipInner').classList.remove('flipped');
+  document.getElementById('flipHint').classList.remove('hidden');
+  document.getElementById('promptNextBtn').style.display = 'none';
+}
+
+let timerInterval = null;
+function startTimer() {
+  clearInterval(timerInterval);
+  let t = 45;
+  document.getElementById('countdownDisplay').textContent = t;
+  const bar = document.getElementById('timerBar');
+  bar.classList.remove('running');
+  void bar.offsetWidth;
+  bar.classList.add('running');
+  timerInterval = setInterval(() => {
+    t--;
+    document.getElementById('countdownDisplay').textContent = Math.max(0, t);
+    if (t <= 0) clearInterval(timerInterval);
+  }, 1000);
+}
+
+function spawnConfetti(id) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  c.innerHTML = '';
+  const cols = ['#F5A623','#A855F7','#10B981','#3B82F6','#EF4444','#FFD36E','#fff'];
+  for (let i = 0; i < 60; i++) {
+    const b = document.createElement('div');
+    b.className = 'confetti-bit';
+    b.style.cssText = `left:${Math.random()*100}%;background:${cols[~~(Math.random()*cols.length)]};animation-delay:${Math.random()*2}s;animation-duration:${2+Math.random()*2}s;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'}`;
+    c.appendChild(b);
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
