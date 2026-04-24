@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,9 +8,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ⚠️ Use a .env file before deploying publicly
-const SPOTIFY_CLIENT_ID = '6445ab8b3d8247fb9f38380a072dc415';
-const SPOTIFY_CLIENT_SECRET = '5f5b49fef82b42f598f528cce6b2a83a';
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 const PROMPTS = [
   'Your instant reaction to the words "dance party."',
